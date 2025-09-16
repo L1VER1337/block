@@ -162,17 +162,26 @@ const LeadersTab = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading leaders data
-    setTimeout(() => {
-      setLeaders([
-        { id: 1, username: 'ProGamer', score: 15420, rank: 1 },
-        { id: 2, username: 'BlockMaster', score: 12890, rank: 2 },
-        { id: 3, username: 'PuzzleKing', score: 11230, rank: 3 },
-        { id: 4, username: 'GameHero', score: 9870, rank: 4 },
-        { id: 5, username: 'BlastExpert', score: 8450, rank: 5 }
-      ]);
-      setLoading(false);
-    }, 1500);
+    const fetchLeaders = async () => {
+      try {
+        const response = await axios.get(`${API}/leaderboard`);
+        setLeaders(response.data);
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+        // Fallback to mock data
+        setLeaders([
+          { user_id: '1', username: 'ProGamer', best_score: 15420, rank: 1 },
+          { user_id: '2', username: 'BlockMaster', best_score: 12890, rank: 2 },
+          { user_id: '3', username: 'PuzzleKing', best_score: 11230, rank: 3 },
+          { user_id: '4', username: 'GameHero', best_score: 9870, rank: 4 },
+          { user_id: '5', username: 'BlastExpert', best_score: 8450, rank: 5 }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaders();
   }, []);
 
   if (loading) {
