@@ -26,24 +26,72 @@ const LoadingScreen = () => (
 );
 
 // Demo Block Blast Game Component
-const BlockBlastGame = () => {
+const BlockBlastGame = ({ user }) => {
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [gameStartTime, setGameStartTime] = useState(null);
 
   const startGame = () => {
     setIsPlaying(true);
     setGameOver(false);
     setScore(0);
+    setGameStartTime(Date.now());
   };
 
-  const simulateGameOver = () => {
+  const simulateGameOver = async () => {
     setGameOver(true);
     setIsPlaying(false);
+    
     // Simulate score increase during game
     const finalScore = Math.floor(Math.random() * 10000) + 1000;
     setScore(finalScore);
+    
+    // Calculate game duration
+    const gameDuration = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0;
+    
+    // Submit score to backend if user is available
+    if (user && user.id) {
+      try {
+        await axios.post(`${API}/scores`, {
+          user_id: user.id,
+          score: finalScore,
+          game_duration: gameDuration
+        });
+        console.log('Score submitted successfully');
+      } catch (error) {
+        console.error('Failed to submit score:', error);
+      }
+    }
   };
+
+  // Function to read score from screen (for future integration with actual game)
+  const readScoreFromScreen = () => {
+    // This function will be called when "No Space Left" appears
+    const scoreElement = document.querySelector('.score-value');
+    if (scoreElement) {
+      const currentScore = parseInt(scoreElement.textContent.replace(/,/g, '')) || 0;
+      return currentScore;
+    }
+    return 0;
+  };
+
+  // Monitor for "No Space Left" text (for future integration)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isPlaying) {
+        // Check if "No Space Left" appears anywhere on screen
+        const bodyText = document.body.textContent;
+        if (bodyText.includes('No Space Left')) {
+          const currentScore = readScoreFromScreen();
+          setScore(currentScore);
+          simulateGameOver();
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, gameStartTime]);
 
   return (
     <div className="block-blast-game">
