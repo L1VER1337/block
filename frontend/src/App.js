@@ -234,15 +234,58 @@ const ShopTab = () => (
 );
 
 // Profile Tab Component
-const ProfileTab = () => {
+const ProfileTab = ({ user }) => {
   const [userStats, setUserStats] = useState({
     username: 'Player',
     avatar: null,
-    bestScore: 8450,
-    gamesPlayed: 127,
-    totalScore: 45890,
-    rank: 15
+    bestScore: 0,
+    gamesPlayed: 0,
+    totalScore: 0,
+    rank: 0
   });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      if (user && user.id) {
+        try {
+          const response = await axios.get(`${API}/stats/user/${user.id}`);
+          setUserStats({
+            username: user.username,
+            avatar: user.photo_url,
+            bestScore: user.best_score,
+            gamesPlayed: user.games_played,
+            totalScore: user.total_score,
+            rank: response.data.rank
+          });
+        } catch (error) {
+          console.error('Failed to fetch user stats:', error);
+          setUserStats({
+            username: user.username || 'Player',
+            avatar: user.photo_url,
+            bestScore: user.best_score || 0,
+            gamesPlayed: user.games_played || 0,
+            totalScore: user.total_score || 0,
+            rank: 0
+          });
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchUserStats();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="tab-content">
+        <div className="loading-content">
+          <Loader2 className="animate-spin" size={32} />
+          <p>Загрузка профиля...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tab-content">
