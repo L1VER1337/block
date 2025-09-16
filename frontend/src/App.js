@@ -25,19 +25,8 @@ const LoadingScreen = () => (
   </div>
 );
 
-// Component to display when Telegram WebApp is not available
-const TelegramWarning = () => (
-  <div className="telegram-warning">
-    <div className="warning-content">
-      <h2>Приложение должно быть запущено в Telegram</h2>
-      <p>Пожалуйста, откройте это приложение внутри Telegram для полноценной работы.</p>
-      <p>Вы можете использовать ссылку на бота или найти его в поиске Telegram.</p>
-    </div>
-  </div>
-);
-
 // Demo Block Blast Game Component
-const BlockBlastGame = ({ user }) => {
+const BlockBlastGame = ({ user, activeTab }) => {
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -76,6 +65,7 @@ const BlockBlastGame = ({ user }) => {
     }
   };
 
+<<<<<<< HEAD
   // Function to read score from screen (for future integration with actual game)
   const readScoreFromScreen = () => {
     // This function will be called when "No Space Left" appears
@@ -109,14 +99,10 @@ const BlockBlastGame = ({ user }) => {
     return () => clearInterval(interval);
   }, [isPlaying, gameStartTime, simulateGameOver]); // Добавил simulateGameOver в зависимости
 
+=======
+>>>>>>> d76e1fc (all)
   return (
     <div className="block-blast-game">
-      <div className="game-header">
-        <div className="score-display">
-          <span className="score-label">Счёт</span>
-          <span className="score-value">{score.toLocaleString()}</span>
-        </div>
-      </div>
       
       <div className="game-area">
         {!isPlaying && !gameOver && (
@@ -130,6 +116,7 @@ const BlockBlastGame = ({ user }) => {
         )}
         
         {isPlaying && (
+<<<<<<< HEAD
           <div className="game-playing">
             <iframe id="gameFrame" src="/game.html" title="Block Blast Game" allowFullScreen></iframe>
             {/* <div className="game-grid"> */}
@@ -141,6 +128,15 @@ const BlockBlastGame = ({ user }) => {
             <button onClick={simulateGameOver} className="end-game-button">
               Симулировать окончание игры
             </button>
+=======
+          <div className={`game-playing ${activeTab === 'game' ? 'fullscreen' : ''}`}>
+            <iframe 
+              src="/game.html" 
+              title="Block Blast Game" 
+              className="game-iframe"
+              style={{ width: '100%', height: '100%', border: 'none' }}
+            ></iframe>
+>>>>>>> d76e1fc (all)
           </div>
         )}
         
@@ -187,11 +183,11 @@ const LeadersTab = () => {
         console.error('Failed to fetch leaderboard:', error);
         // Fallback to mock data
         setLeaders([
-          { user_id: '1', username: 'ProGamer', best_score: 15420, rank: 1 },
-          { user_id: '2', username: 'BlockMaster', best_score: 12890, rank: 2 },
-          { user_id: '3', username: 'PuzzleKing', best_score: 11230, rank: 3 },
-          { user_id: '4', username: 'GameHero', best_score: 9870, rank: 4 },
-          { user_id: '5', username: 'BlastExpert', best_score: 8450, rank: 5 }
+          { user_id: '1', username: 'ProGamer', best_score: 15420, rank: 1, photo_url: 'https://via.placeholder.com/40/FFD700/FFFFFF?text=P' },
+          { user_id: '2', username: 'BlockMaster', best_score: 12890, rank: 2, photo_url: 'https://via.placeholder.com/40/C0C0C0/FFFFFF?text=B' },
+          { user_id: '3', username: 'PuzzleKing', best_score: 11230, rank: 3, photo_url: 'https://via.placeholder.com/40/CD7F32/FFFFFF?text=P' },
+          { user_id: '4', username: 'GameHero', best_score: 9870, rank: 4, photo_url: 'https://via.placeholder.com/40/AAAAAA/FFFFFF?text=G' },
+          { user_id: '5', username: 'BlastExpert', best_score: 8450, rank: 5, photo_url: 'https://via.placeholder.com/40/DDDDDD/FFFFFF?text=B' }
         ]);
       } finally {
         setLoading(false);
@@ -219,13 +215,22 @@ const LeadersTab = () => {
         <h2>Таблица лидеров</h2>
       </div>
       <div className="leaders-list">
-        {leaders.map((leader) => (
+        {leaders.slice(0, 50).map((leader) => (
           <div key={leader.user_id} className={`leader-item ${leader.rank <= 3 ? 'top-three' : ''}`}>
-            <div className="leader-rank">
-              {leader.rank === 1 && <Trophy size={20} className="gold" />}
-              {leader.rank === 2 && <Trophy size={20} className="silver" />}
-              {leader.rank === 3 && <Trophy size={20} className="bronze" />}
-              {leader.rank > 3 && <span className="rank-number">{leader.rank}</span>}
+            <div className="leader-left">
+              <div className="leader-rank">
+                {leader.rank === 1 && <Trophy size={20} className="gold" />}
+                {leader.rank === 2 && <Trophy size={20} className="silver" />}
+                {leader.rank === 3 && <Trophy size={20} className="bronze" />}
+                {leader.rank > 3 && <span className="rank-number">{leader.rank}</span>}
+              </div>
+              <div className="leader-avatar">
+                {leader.photo_url ? (
+                  <img src={leader.photo_url} alt="Profile" />
+                ) : (
+                  <User size={24} />
+                )}
+              </div>
             </div>
             <div className="leader-info">
               <div className="leader-username">{leader.username}</div>
@@ -268,7 +273,7 @@ const ProfileTab = ({ user }) => {
         try {
           const response = await axios.get(`${API}/stats/user/${user.id}`);
           setUserStats({
-            username: user.username,
+            username: user.username || user.first_name || `ID: ${user.telegram_id}`,
             avatar: user.photo_url,
             bestScore: user.best_score,
             gamesPlayed: user.games_played,
@@ -278,11 +283,11 @@ const ProfileTab = ({ user }) => {
         } catch (error) {
           console.error('Failed to fetch user stats:', error);
           setUserStats({
-            username: user.username,
+            username: user.username || user.first_name || `ID: ${user.telegram_id}`,
             avatar: user.photo_url,
-            bestScore: user.best_score,
-            gamesPlayed: user.games_played,
-            totalScore: user.total_score,
+            bestScore: user.best_score || 0,
+            gamesPlayed: user.games_played || 0,
+            totalScore: user.total_score || 0,
             rank: 0
           });
         }
@@ -317,6 +322,7 @@ const ProfileTab = ({ user }) => {
         <div className="profile-info">
           <h2>{userStats.username}</h2>
           <p className="user-rank">Ранг: #{userStats.rank}</p>
+          <p className="telegram-id">Telegram ID: {user.telegram_id}</p>
         </div>
       </div>
       
@@ -342,12 +348,48 @@ const ProfileTab = ({ user }) => {
   );
 };
 
+// Player Rank Overlay Component
+const PlayerRankOverlay = ({ user, userStats, activeTab }) => {
+  // Only show overlay on game, duels, leaders, and shop tabs
+  const showOverlay = activeTab !== 'profile';
+
+  if (!user || !userStats || userStats.rank === 0 || !showOverlay) {
+    return null;
+  }
+
+  return (
+    <div className="player-rank-overlay">
+      <div className="player-rank-content">
+        <div className="player-avatar">
+          {userStats.avatar ? (
+            <img src={userStats.avatar} alt="Profile" />
+          ) : (
+            <User size={24} />
+          )}
+        </div>
+        <div className="player-info">
+          <span className="player-username">{userStats.username}</span>
+          <span className="player-rank-text">Ранг: #{userStats.rank}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main App Component
 function App() {
   const [activeTab, setActiveTab] = useState('game');
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [showTelegramWarning, setShowTelegramWarning] = useState(false);
+  const [userStats, setUserStats] = useState({
+    username: 'Player',
+    avatar: null,
+    bestScore: 0,
+    gamesPlayed: 0,
+    totalScore: 0,
+    rank: 0
+  });
+  // const [showTelegramWarning, setShowTelegramWarning] = useState(false); // Удаляем это состояние
 
   const tabs = [
     { id: 'duels', name: 'Дуэли', icon: Users, component: DuelsTab },
@@ -361,46 +403,53 @@ function App() {
     const initializeApp = async () => {
       try {
         // Initialize Telegram Web App
-        if (tg) {
+        if (tg && tg.initDataUnsafe?.user) {
           tg.ready();
           tg.expand();
           
           // Get Telegram user data
-          const telegramUser = tg.initDataUnsafe?.user;
-          if (telegramUser) {
-            // Create or get user from backend
-            const userData = {
-              telegram_id: telegramUser.id,
-              username: telegramUser.username || `${telegramUser.first_name}_${telegramUser.id}`,
-              first_name: telegramUser.first_name,
-              last_name: telegramUser.last_name,
-              photo_url: telegramUser.photo_url
-            };
-            console.log('Sending userData to backend:', userData);
+          const telegramUser = tg.initDataUnsafe.user;
+          // Create or get user from backend
+          const userData = {
+            telegram_id: telegramUser.id,
+            username: telegramUser.username || `${telegramUser.first_name}_${telegramUser.id}`,
+            first_name: telegramUser.first_name,
+            last_name: telegramUser.last_name,
+            photo_url: telegramUser.photo_url
+          };
+          console.log('Sending userData to backend:', userData);
 
-            try {
-              const response = await axios.post(`${API}/users`, userData, {
-                headers: {
-                  'X-Telegram-Init-Data': tg.initData || ''
-                }
-              });
-              setUser(response.data);
-              console.log('User initialized with backend response:', response.data);
-            } catch (error) {
-              console.error('Failed to initialize user:', error);
-            }
-          } else {
-            // If telegramUser is not available, show a warning
-            setShowTelegramWarning(true);
-            console.warn('Telegram user data not available. Please open the app in Telegram.');
+          try {
+            const response = await axios.post(`${API}/users`, userData, {
+              headers: {
+                'X-Telegram-Init-Data': tg.initData || ''
+              }
+            });
+            setUser(response.data);
+            // Fetch user stats immediately after user is set
+            const statsResponse = await axios.get(`${API}/stats/user/${response.data.id}`);
+            setUserStats({
+              username: response.data.username || response.data.first_name || `ID: ${response.data.telegram_id}`,
+              avatar: response.data.photo_url,
+              bestScore: response.data.best_score,
+              gamesPlayed: response.data.games_played,
+              totalScore: response.data.total_score,
+              rank: statsResponse.data.rank
+            });
+            console.log('User initialized with backend response:', response.data);
+          } catch (error) {
+            console.error('Failed to initialize Telegram user:', error);
+            // Fallback to demo user if Telegram user init fails
+            await createDemoUser();
           }
         } else {
-          // If tg is not available (not in Telegram Web App environment), show a warning
-          setShowTelegramWarning(true);
-          console.warn('Telegram WebApp is not available. Please open the app in Telegram.');
+          // Fallback for non-Telegram environment or if telegramUser is not available
+          console.warn('Telegram WebApp is not available or user data is missing. Initializing demo user.');
+          await createDemoUser();
         }
       } catch (error) {
         console.error('App initialization error:', error);
+        await createDemoUser(); // Ensure demo user is created even if there's an app-level error
       } finally {
         // Simulate loading time
         setTimeout(() => {
@@ -409,16 +458,80 @@ function App() {
       }
     };
 
+    const createDemoUser = async () => {
+      const demoUser = {
+        username: 'DemoPlayer',
+        first_name: 'Demo',
+        last_name: 'Player',
+        telegram_id: Math.floor(Math.random() * 1000000000) // Уникальный telegram_id для демо-пользователя
+      };
+      try {
+        const response = await axios.post(`${API}/users`, demoUser);
+        setUser(response.data);
+        // Fetch demo user stats
+        const statsResponse = await axios.get(`${API}/stats/user/${response.data.id}`);
+        setUserStats({
+          username: response.data.username || response.data.first_name || `ID: ${response.data.telegram_id}`,
+          avatar: response.data.photo_url,
+          bestScore: response.data.best_score,
+          gamesPlayed: response.data.games_played,
+          totalScore: response.data.total_score,
+          rank: statsResponse.data.rank
+        });
+        console.log('Demo user initialized:', response.data);
+      } catch (error) {
+        console.error('Failed to initialize demo user:', error);
+        setUser({
+          id: 'demo-user',
+          username: 'DemoPlayer',
+          best_score: 0,
+          total_score: 0,
+          games_played: 0
+        });
+        // Fallback userStats if API fails
+        setUserStats({
+          username: 'DemoPlayer',
+          avatar: null,
+          bestScore: 0,
+          gamesPlayed: 0,
+          totalScore: 0,
+          rank: 0
+        });
+      }
+    };
+
     initializeApp();
   }, []);
+
+  // Update userStats when user changes (e.g., after score submission)
+  useEffect(() => {
+    if (user && user.id) {
+      const fetchUserStats = async () => {
+        try {
+          const response = await axios.get(`${API}/stats/user/${user.id}`);
+          setUserStats({
+            username: user.username || user.first_name || `ID: ${user.telegram_id}`,
+            avatar: user.photo_url,
+            bestScore: user.best_score,
+            gamesPlayed: user.games_played,
+            totalScore: user.total_score,
+            rank: response.data.rank
+          });
+        } catch (error) {
+          console.error('Failed to refresh user stats:', error);
+        }
+      };
+      fetchUserStats();
+    }
+  }, [user]);
 
   if (isLoading) {
     return <LoadingScreen />;
   }
 
-  if (showTelegramWarning) {
-    return <TelegramWarning />;
-  }
+  // if (showTelegramWarning) {
+  //   return <TelegramWarning />;
+  // }
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || BlockBlastGame;
 
@@ -426,9 +539,11 @@ function App() {
     <div className="App">
       <div className="app-container">
         <main className="main-content">
-          <ActiveComponent user={user} />
+         <ActiveComponent user={user} activeTab={activeTab} />
         </main>
         
+        <PlayerRankOverlay user={user} userStats={userStats} activeTab={activeTab} />
+
         <nav className="bottom-nav">
           {tabs.map((tab) => {
             const Icon = tab.icon;
