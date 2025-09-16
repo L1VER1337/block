@@ -421,7 +421,7 @@ function App() {
     <div className="App">
       <div className="app-container">
         <main className="main-content">
-          <ActiveComponent />
+          <ActiveComponent user={user} />
         </main>
         
         <nav className="bottom-nav">
