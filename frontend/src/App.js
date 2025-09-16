@@ -329,6 +329,7 @@ const ProfileTab = ({ user }) => {
 function App() {
   const [activeTab, setActiveTab] = useState('game');
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   const tabs = [
     { id: 'duels', name: 'Дуэли', icon: Users, component: DuelsTab },
@@ -339,11 +340,75 @@ function App() {
   ];
 
   useEffect(() => {
-    // Simulate initial loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
+    const initializeApp = async () => {
+      try {
+        // Initialize Telegram Web App
+        if (tg) {
+          tg.ready();
+          tg.expand();
+          
+          // Get Telegram user data
+          const telegramUser = tg.initDataUnsafe?.user;
+          if (telegramUser) {
+            // Create or get user from backend
+            const userData = {
+              telegram_id: telegramUser.id,
+              username: telegramUser.username || `${telegramUser.first_name}_${telegramUser.id}`,
+              first_name: telegramUser.first_name,
+              last_name: telegramUser.last_name,
+              photo_url: telegramUser.photo_url
+            };
+
+            try {
+              const response = await axios.post(`${API}/users`, userData);
+              setUser(response.data);
+              console.log('User initialized:', response.data);
+            } catch (error) {
+              console.error('Failed to initialize user:', error);
+            }
+          } else {
+            // Demo user for testing outside Telegram
+            const demoUser = {
+              username: 'DemoPlayer',
+              first_name: 'Demo',
+              last_name: 'Player'
+            };
+            
+            try {
+              const response = await axios.post(`${API}/users`, demoUser);
+              setUser(response.data);
+              console.log('Demo user initialized:', response.data);
+            } catch (error) {
+              console.error('Failed to initialize demo user:', error);
+            }
+          }
+        } else {
+          // Fallback for non-Telegram environment
+          const demoUser = {
+            username: 'DemoPlayer',
+            first_name: 'Demo',
+            last_name: 'Player'
+          };
+          
+          try {
+            const response = await axios.post(`${API}/users`, demoUser);
+            setUser(response.data);
+            console.log('Fallback user initialized:', response.data);
+          } catch (error) {
+            console.error('Failed to initialize fallback user:', error);
+          }
+        }
+      } catch (error) {
+        console.error('App initialization error:', error);
+      } finally {
+        // Simulate loading time
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 2000);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   if (isLoading) {
