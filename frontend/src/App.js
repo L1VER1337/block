@@ -3,6 +3,9 @@ import './App.css';
 import axios from 'axios';
 import { Users, Trophy, GamepadIcon, ShoppingCart, User, Loader2 } from 'lucide-react';
 
+// Telegram Web App API helper
+const tg = window.Telegram?.WebApp;
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
