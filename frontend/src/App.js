@@ -65,42 +65,6 @@ const BlockBlastGame = ({ user, activeTab }) => {
     }
   };
 
-<<<<<<< HEAD
-  // Function to read score from screen (for future integration with actual game)
-  const readScoreFromScreen = () => {
-    // This function will be called when "No Space Left" appears
-    const gameFrame = document.getElementById('gameFrame');
-    if (gameFrame && gameFrame.contentWindow) {
-      const scoreElement = gameFrame.contentWindow.document.querySelector('.score-value');
-      if (scoreElement) {
-        const currentScore = parseInt(scoreElement.textContent.replace(/,/g, '')) || 0;
-        return currentScore;
-      }
-    }
-    return 0;
-  };
-
-  // Monitor for "No Space Left" text (for future integration)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (isPlaying) {
-        const gameFrame = document.getElementById('gameFrame');
-        if (gameFrame && gameFrame.contentWindow) {
-          const bodyText = gameFrame.contentWindow.document.body.textContent;
-          if (bodyText.includes('No Space Left')) {
-            const currentScore = readScoreFromScreen();
-            setScore(currentScore);
-            simulateGameOver();
-          }
-        }
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, gameStartTime, simulateGameOver]); // Добавил simulateGameOver в зависимости
-
-=======
->>>>>>> d76e1fc (all)
   return (
     <div className="block-blast-game">
       
@@ -108,7 +72,7 @@ const BlockBlastGame = ({ user, activeTab }) => {
         {!isPlaying && !gameOver && (
           <div className="game-start">
             <h2>Block Blast</h2>
-            <p>Добро пожаловать в Block Blast!</p>
+            <p>Демо версия игры</p>
             <button onClick={startGame} className="start-button">
               Начать игру
             </button>
@@ -116,19 +80,6 @@ const BlockBlastGame = ({ user, activeTab }) => {
         )}
         
         {isPlaying && (
-<<<<<<< HEAD
-          <div className="game-playing">
-            <iframe id="gameFrame" src="/game.html" title="Block Blast Game" allowFullScreen></iframe>
-            {/* <div className="game-grid"> */}
-              {/* Demo game grid */}
-              {/* {Array.from({length: 100}).map((_, i) => (
-                <div key={i} className="grid-cell"></div>
-              ))} */}
-            {/* </div> */}
-            <button onClick={simulateGameOver} className="end-game-button">
-              Симулировать окончание игры
-            </button>
-=======
           <div className={`game-playing ${activeTab === 'game' ? 'fullscreen' : ''}`}>
             <iframe 
               src="/game.html" 
@@ -136,7 +87,6 @@ const BlockBlastGame = ({ user, activeTab }) => {
               className="game-iframe"
               style={{ width: '100%', height: '100%', border: 'none' }}
             ></iframe>
->>>>>>> d76e1fc (all)
           </div>
         )}
         
