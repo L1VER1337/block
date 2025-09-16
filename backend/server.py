@@ -80,8 +80,12 @@ def prepare_for_mongo(data):
     return data
 
 def parse_from_mongo(item):
-    """Parse datetime strings back from MongoDB"""
+    """Parse datetime strings back from MongoDB and handle ObjectId"""
     if isinstance(item, dict):
+        # Remove MongoDB ObjectId field
+        if '_id' in item:
+            del item['_id']
+            
         for key, value in item.items():
             if key in ['created_at', 'updated_at'] and isinstance(value, str):
                 try:
