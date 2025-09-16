@@ -203,7 +203,7 @@ const LeadersTab = () => {
       </div>
       <div className="leaders-list">
         {leaders.map((leader) => (
-          <div key={leader.id} className={`leader-item ${leader.rank <= 3 ? 'top-three' : ''}`}>
+          <div key={leader.user_id} className={`leader-item ${leader.rank <= 3 ? 'top-three' : ''}`}>
             <div className="leader-rank">
               {leader.rank === 1 && <Trophy size={20} className="gold" />}
               {leader.rank === 2 && <Trophy size={20} className="silver" />}
@@ -212,7 +212,7 @@ const LeadersTab = () => {
             </div>
             <div className="leader-info">
               <div className="leader-username">{leader.username}</div>
-              <div className="leader-score">{leader.score.toLocaleString()} очков</div>
+              <div className="leader-score">{leader.best_score.toLocaleString()} очков</div>
             </div>
           </div>
         ))}
