@@ -25,6 +25,17 @@ const LoadingScreen = () => (
   </div>
 );
 
+// Component to display when Telegram WebApp is not available
+const TelegramWarning = () => (
+  <div className="telegram-warning">
+    <div className="warning-content">
+      <h2>Приложение должно быть запущено в Telegram</h2>
+      <p>Пожалуйста, откройте это приложение внутри Telegram для полноценной работы.</p>
+      <p>Вы можете использовать ссылку на бота или найти его в поиске Telegram.</p>
+    </div>
+  </div>
+);
+
 // Demo Block Blast Game Component
 const BlockBlastGame = ({ user }) => {
   const [score, setScore] = useState(0);
@@ -91,7 +102,7 @@ const BlockBlastGame = ({ user }) => {
     }, 500);
 
     return () => clearInterval(interval);
-  }, [isPlaying, gameStartTime]);
+  }, [isPlaying, gameStartTime, simulateGameOver]); // Добавил simulateGameOver в зависимости
 
   return (
     <div className="block-blast-game">
@@ -261,11 +272,11 @@ const ProfileTab = ({ user }) => {
         } catch (error) {
           console.error('Failed to fetch user stats:', error);
           setUserStats({
-            username: user.username || 'Player',
+            username: user.username,
             avatar: user.photo_url,
-            bestScore: user.best_score || 0,
-            gamesPlayed: user.games_played || 0,
-            totalScore: user.total_score || 0,
+            bestScore: user.best_score,
+            gamesPlayed: user.games_played,
+            totalScore: user.total_score,
             rank: 0
           });
         }
@@ -330,6 +341,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('game');
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [showTelegramWarning, setShowTelegramWarning] = useState(false);
 
   const tabs = [
     { id: 'duels', name: 'Дуэли', icon: Users, component: DuelsTab },
@@ -358,45 +370,28 @@ function App() {
               last_name: telegramUser.last_name,
               photo_url: telegramUser.photo_url
             };
+            console.log('Sending userData to backend:', userData);
 
             try {
-              const response = await axios.post(`${API}/users`, userData);
+              const response = await axios.post(`${API}/users`, userData, {
+                headers: {
+                  'X-Telegram-Init-Data': tg.initData || ''
+                }
+              });
               setUser(response.data);
-              console.log('User initialized:', response.data);
+              console.log('User initialized with backend response:', response.data);
             } catch (error) {
               console.error('Failed to initialize user:', error);
             }
           } else {
-            // Demo user for testing outside Telegram
-            const demoUser = {
-              username: 'DemoPlayer',
-              first_name: 'Demo',
-              last_name: 'Player'
-            };
-            
-            try {
-              const response = await axios.post(`${API}/users`, demoUser);
-              setUser(response.data);
-              console.log('Demo user initialized:', response.data);
-            } catch (error) {
-              console.error('Failed to initialize demo user:', error);
-            }
+            // If telegramUser is not available, show a warning
+            setShowTelegramWarning(true);
+            console.warn('Telegram user data not available. Please open the app in Telegram.');
           }
         } else {
-          // Fallback for non-Telegram environment
-          const demoUser = {
-            username: 'DemoPlayer',
-            first_name: 'Demo',
-            last_name: 'Player'
-          };
-          
-          try {
-            const response = await axios.post(`${API}/users`, demoUser);
-            setUser(response.data);
-            console.log('Fallback user initialized:', response.data);
-          } catch (error) {
-            console.error('Failed to initialize fallback user:', error);
-          }
+          // If tg is not available (not in Telegram Web App environment), show a warning
+          setShowTelegramWarning(true);
+          console.warn('Telegram WebApp is not available. Please open the app in Telegram.');
         }
       } catch (error) {
         console.error('App initialization error:', error);
@@ -413,6 +408,10 @@ function App() {
 
   if (isLoading) {
     return <LoadingScreen />;
+  }
+
+  if (showTelegramWarning) {
+    return <TelegramWarning />;
   }
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || BlockBlastGame;

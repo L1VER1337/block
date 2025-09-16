@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, APIRouter, Depends
+from fastapi import FastAPI, HTTPException, APIRouter, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -9,6 +9,10 @@ import os
 import logging
 import uuid
 from pathlib import Path
+import hmac
+import hashlib
+from urllib.parse import unquote
+import json
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -17,6 +21,10 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+if not TELEGRAM_BOT_TOKEN:
+    logging.error("TELEGRAM_BOT_TOKEN not found in environment variables. WebApp validation will fail.")
 
 # Create the main app
 app = FastAPI(title="Block Blast Game API")
@@ -39,7 +47,7 @@ class User(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class UserCreate(BaseModel):
-    telegram_id: Optional[int] = None
+    telegram_id: int
     username: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -94,6 +102,35 @@ def parse_from_mongo(item):
                     pass
     return item
 
+async def validate_telegram_init_data(init_data: str = Header(..., alias="X-Telegram-Init-Data")):
+    if not TELEGRAM_BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="Server configuration error: Telegram Bot Token not set.")
+
+    try:
+        # Split init_data into key-value pairs
+        pairs = sorted([s.split('=') for s in init_data.split('&') if s.split('=')[0] != 'hash'])
+        data_check_string = '\n'.join([f'{k}={v}' for k, v in pairs])
+
+        secret_key = hmac.new(key=b"WebAppData", msg=TELEGRAM_BOT_TOKEN.encode(), digestmod=hashlib.sha256).digest()
+        calculated_hash = hmac.new(key=secret_key, msg=data_check_string.encode(), digestmod=hashlib.sha256).hexdigest()
+
+        # Extract hash from init_data
+        received_hash = dict(s.split('=') for s in init_data.split('&')).get('hash')
+
+        if calculated_hash != received_hash:
+            raise HTTPException(status_code=401, detail="Unauthorized: Invalid initData hash.")
+        
+        # Parse user data from init_data
+        user_data_str = dict(s.split('=') for s in init_data.split('&')).get('user')
+        if not user_data_str:
+            raise HTTPException(status_code=400, detail="Bad Request: User data not found in initData.")
+        
+        user_data = json.loads(unquote(user_data_str))
+        return user_data
+    except Exception as e:
+        logging.error(f"initData validation error: {e}")
+        raise HTTPException(status_code=401, detail=f"Unauthorized: initData validation failed: {e}")
+
 # API Routes
 
 @api_router.get("/")
@@ -102,14 +139,20 @@ async def root():
 
 # User Management
 @api_router.post("/users", response_model=User)
-async def create_user(user_data: UserCreate):
+async def create_user(
+    user_data: UserCreate,
+    telegram_user_data: dict = Depends(validate_telegram_init_data)
+):
     """Create a new user"""
+    logging.info(f"Received user_data: {user_data.dict()}")
+    logging.info(f"Validated Telegram user data: {telegram_user_data}")
+    
     # Check if user with telegram_id already exists
-    if user_data.telegram_id:
-        existing_user = await db.users.find_one({"telegram_id": user_data.telegram_id})
-        if existing_user:
-            existing_user = parse_from_mongo(existing_user)
-            return User(**existing_user)
+    existing_user = await db.users.find_one({"telegram_id": user_data.telegram_id})
+    if existing_user:
+        logging.info(f"User with telegram_id {user_data.telegram_id} already exists.")
+        existing_user = parse_from_mongo(existing_user)
+        return User(**existing_user)
     
     user_dict = user_data.dict()
     user_obj = User(**user_dict)
