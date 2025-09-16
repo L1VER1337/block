@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import axios from 'axios';
-import { Users, Trophy, GamepadIcon, ShoppingCart, User, Loader2 } from 'lucide-react';
+import { Users, Trophy, GamepadIcon, ShoppingCart, User, Loader2, Play, Clock, Award, Target } from 'lucide-react';
 
 // Telegram Web App API helper
 const tg = window.Telegram?.WebApp;
@@ -111,7 +111,7 @@ const BlockBlastGame = ({ user, activeTab }) => {
 const DuelsTab = () => (
   <div className="tab-content">
     <div className="coming-soon">
-      <Users size={64} className="coming-soon-icon" />
+      <Users size={100} className="coming-soon-icon" />
       <h2>Дуэли</h2>
       <p>Скоро будет доступно!</p>
       <p className="description">Соревнуйтесь с другими игроками в захватывающих дуэлях</p>
@@ -197,7 +197,7 @@ const LeadersTab = () => {
 const ShopTab = () => (
   <div className="tab-content">
     <div className="coming-soon">
-      <ShoppingCart size={64} className="coming-soon-icon" />
+      <ShoppingCart size={100} className="coming-soon-icon" />
       <h2>Магазин</h2>
       <p>Скоро будет доступно!</p>
       <p className="description">Покупайте улучшения и бонусы для игры</p>
@@ -215,23 +215,40 @@ const ProfileTab = ({ user }) => {
     totalScore: 0,
     rank: 0
   });
+  const [lastGame, setLastGame] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [quests, setQuests] = useState([]);
 
   useEffect(() => {
     const fetchUserStats = async () => {
       if (user && user.id) {
+        // console.log('User data for quests:', user);
         try {
           const response = await axios.get(`${API}/stats/user/${user.id}`);
           setUserStats({
             username: user.username || user.first_name || `ID: ${user.telegram_id}`,
             avatar: user.photo_url,
-            bestScore: user.best_score,
-            gamesPlayed: user.games_played,
-            totalScore: user.total_score,
+            bestScore: response.data.best_score,
+            gamesPlayed: response.data.games_played,
+            totalScore: response.data.total_score,
             rank: response.data.rank
           });
+
+          // Fetch last game data
+          const lastGameResponse = await axios.get(`${API}/stats/user/${user.id}/last_game`);
+          setLastGame(lastGameResponse.data);
+
+          // Demo quests data
+          const demoQuests = [
+            { id: 1, name: 'Мастер блоков', description: 'Сыграйте 5 игр', target: 5, current: 3, reward: '50 монет' },
+            { id: 2, name: 'Легенда очков', description: 'Наберите 5000 очков', target: 5000, current: 2500, reward: '100 монет' },
+            { id: 3, name: 'Ежедневный бонус', description: 'Войдите 3 дня подряд', target: 3, current: 1, reward: '20 монет' },
+          ];
+          setQuests(demoQuests);
+          // console.log('Generated quests:', demoQuests);
+
         } catch (error) {
-          console.error('Failed to fetch user stats:', error);
+          console.error('Failed to fetch user stats or last game:', error);
           setUserStats({
             username: user.username || user.first_name || `ID: ${user.telegram_id}`,
             avatar: user.photo_url,
@@ -240,6 +257,8 @@ const ProfileTab = ({ user }) => {
             totalScore: user.total_score || 0,
             rank: 0
           });
+          setLastGame(null); // Ensure last game is reset on error
+          setQuests([]); // Ensure quests are reset on error
         }
       }
       setLoading(false);
@@ -260,38 +279,74 @@ const ProfileTab = ({ user }) => {
   }
 
   return (
-    <div className="tab-content">
-      <div className="profile-header">
-        <div className="profile-avatar">
+    <div className="tab-content profile-tab-content">
+      <div className="profile-header-compact">
+        <div className="profile-avatar-compact">
           {userStats.avatar ? (
             <img src={userStats.avatar} alt="Profile" />
           ) : (
-            <User size={48} />
+            <User size={36} />
           )}
         </div>
-        <div className="profile-info">
-          <h2>{userStats.username}</h2>
-          <p className="user-rank">Ранг: #{userStats.rank}</p>
-          <p className="telegram-id">Telegram ID: {user.telegram_id}</p>
+        <div className="profile-info-compact">
+          <h3>{userStats.username}</h3>
+          <p className="user-rank-compact">Ранг: #{userStats.rank}</p>
         </div>
       </div>
       
-      <div className="stats-grid">
-        <div className="stat-item">
-          <div className="stat-value">{userStats.bestScore.toLocaleString()}</div>
-          <div className="stat-label">Лучший счёт</div>
+      <div className="stats-grid-compact">
+        <div className="stat-item-compact">
+          <div className="stat-value-compact">{userStats.bestScore.toLocaleString()}</div>
+          <div className="stat-label-compact">Лучший счёт</div>
         </div>
-        <div className="stat-item">
-          <div className="stat-value">{userStats.gamesPlayed}</div>
-          <div className="stat-label">Игр сыграно</div>
+        <div className="stat-item-compact">
+          <div className="stat-value-compact">{userStats.gamesPlayed}</div>
+          <div className="stat-label-compact">Игр сыграно</div>
         </div>
-        <div className="stat-item">
-          <div className="stat-value">{userStats.totalScore.toLocaleString()}</div>
-          <div className="stat-label">Общий счёт</div>
+        <div className="stat-item-compact">
+          <div className="stat-value-compact">{userStats.totalScore.toLocaleString()}</div>
+          <div className="stat-label-compact">Общий счёт</div>
         </div>
-        <div className="stat-item">
-          <div className="stat-value">#{userStats.rank}</div>
-          <div className="stat-label">Текущий ранг</div>
+      </div>
+
+      {lastGame && ( 
+        <div className="last-game-card">
+          <h4>Последняя игра</h4>
+          <div className="last-game-stats">
+            <div className="last-game-stat-item">
+              <Play size={20} />
+              <span>Счёт: {lastGame.score.toLocaleString()}</span>
+            </div>
+            <div className="last-game-stat-item">
+              <Clock size={20} />
+              <span>Время: {lastGame.game_duration} сек.</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="quests-card">
+        <h4>Задания</h4>
+        <div className="quests-list">
+          {quests.map(quest => (
+            <div key={quest.id} className="quest-item">
+              <div className="quest-info">
+                <Target size={20} className="quest-icon" />
+                <p>{quest.name}</p>
+              </div>
+              <p className="quest-description">{quest.description}</p>
+              <div className="quest-progress">
+                <div className="progress-bar-container">
+                  <div 
+                    className="progress-bar-fill"
+                    style={{ width: `${Math.min(100, (quest.current / quest.target) * 100)}%` }}
+                  ></div>
+                </div>
+                <span>{quest.current.toLocaleString()}/{quest.target.toLocaleString()}</span>
+              </div>
+              <span className="quest-reward">Награда: {quest.reward}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -308,18 +363,18 @@ const PlayerRankOverlay = ({ user, userStats, activeTab }) => {
   }
 
   return (
-    <div className="player-rank-overlay">
-      <div className="player-rank-content">
-        <div className="player-avatar">
+    <div className="player-rank-overlay-compact">
+      <div className="player-rank-content-compact">
+        <div className="player-avatar-compact-overlay">
           {userStats.avatar ? (
             <img src={userStats.avatar} alt="Profile" />
           ) : (
-            <User size={24} />
+            <User size={20} />
           )}
         </div>
-        <div className="player-info">
-          <span className="player-username">{userStats.username}</span>
-          <span className="player-rank-text">Ранг: #{userStats.rank}</span>
+        <div className="player-info-compact-overlay">
+          <span className="player-username-compact-overlay">{userStats.username}</span>
+          <span className="player-rank-text-compact-overlay">Ранг: #{userStats.rank}</span>
         </div>
       </div>
     </div>
