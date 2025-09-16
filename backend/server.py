@@ -1,15 +1,14 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from datetime import datetime, timezone
 import os
 import logging
-from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import List
 import uuid
-from datetime import datetime
-
+from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,42 +18,251 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# Create the main app
+app = FastAPI(title="Block Blast Game API")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-
-# Define Models
-class StatusCheck(BaseModel):
+# Pydantic Models
+class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    telegram_id: Optional[int] = None
+    username: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    photo_url: Optional[str] = None
+    best_score: int = 0
+    total_score: int = 0
+    games_played: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class UserCreate(BaseModel):
+    telegram_id: Optional[int] = None
+    username: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    photo_url: Optional[str] = None
 
-# Add your routes to the router instead of directly to app
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    photo_url: Optional[str] = None
+
+class GameScore(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    score: int
+    game_duration: Optional[int] = None  # in seconds
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class GameScoreCreate(BaseModel):
+    user_id: str
+    score: int
+    game_duration: Optional[int] = None
+
+class LeaderboardEntry(BaseModel):
+    user_id: str
+    username: str
+    photo_url: Optional[str] = None
+    best_score: int
+    rank: int
+
+# Helper functions
+def prepare_for_mongo(data):
+    """Convert datetime objects to ISO strings for MongoDB storage"""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if isinstance(value, datetime):
+                data[key] = value.isoformat()
+    return data
+
+def parse_from_mongo(item):
+    """Parse datetime strings back from MongoDB"""
+    if isinstance(item, dict):
+        for key, value in item.items():
+            if key in ['created_at', 'updated_at'] and isinstance(value, str):
+                try:
+                    item[key] = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                except ValueError:
+                    pass
+    return item
+
+# API Routes
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Block Blast Game API is running!"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
+# User Management
+@api_router.post("/users", response_model=User)
+async def create_user(user_data: UserCreate):
+    """Create a new user"""
+    # Check if user with telegram_id already exists
+    if user_data.telegram_id:
+        existing_user = await db.users.find_one({"telegram_id": user_data.telegram_id})
+        if existing_user:
+            existing_user = parse_from_mongo(existing_user)
+            return User(**existing_user)
+    
+    user_dict = user_data.dict()
+    user_obj = User(**user_dict)
+    user_dict = prepare_for_mongo(user_obj.dict())
+    
+    await db.users.insert_one(user_dict)
+    return user_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
+@api_router.get("/users/{user_id}", response_model=User)
+async def get_user(user_id: str):
+    """Get user by ID"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user = parse_from_mongo(user)
+    return User(**user)
+
+@api_router.get("/users/telegram/{telegram_id}", response_model=User)
+async def get_user_by_telegram_id(telegram_id: int):
+    """Get user by Telegram ID"""
+    user = await db.users.find_one({"telegram_id": telegram_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user = parse_from_mongo(user)
+    return User(**user)
+
+@api_router.put("/users/{user_id}", response_model=User)
+async def update_user(user_id: str, user_update: UserUpdate):
+    """Update user information"""
+    update_data = {k: v for k, v in user_update.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    updated_user = await db.users.find_one({"id": user_id})
+    updated_user = parse_from_mongo(updated_user)
+    return User(**updated_user)
+
+# Game Scores
+@api_router.post("/scores", response_model=GameScore)
+async def submit_score(score_data: GameScoreCreate):
+    """Submit a new game score"""
+    # Verify user exists
+    user = await db.users.find_one({"id": score_data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Create score record
+    score_dict = score_data.dict()
+    score_obj = GameScore(**score_dict)
+    score_dict = prepare_for_mongo(score_obj.dict())
+    
+    await db.scores.insert_one(score_dict)
+    
+    # Update user stats
+    update_data = {
+        "games_played": user["games_played"] + 1,
+        "total_score": user["total_score"] + score_data.score,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update best score if this is a new record
+    if score_data.score > user["best_score"]:
+        update_data["best_score"] = score_data.score
+    
+    await db.users.update_one(
+        {"id": score_data.user_id},
+        {"$set": update_data}
+    )
+    
+    return score_obj
+
+@api_router.get("/scores/user/{user_id}")
+async def get_user_scores(user_id: str, limit: int = 10):
+    """Get user's recent scores"""
+    scores = await db.scores.find(
+        {"user_id": user_id}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    scores = [parse_from_mongo(score) for score in scores]
+    return [GameScore(**score) for score in scores]
+
+@api_router.get("/leaderboard", response_model=List[LeaderboardEntry])
+async def get_leaderboard(limit: int = 50):
+    """Get game leaderboard"""
+    pipeline = [
+        {"$match": {"best_score": {"$gt": 0}}},
+        {"$sort": {"best_score": -1}},
+        {"$limit": limit}
+    ]
+    
+    users = await db.users.aggregate(pipeline).to_list(limit)
+    
+    leaderboard = []
+    for rank, user in enumerate(users, 1):
+        entry = LeaderboardEntry(
+            user_id=user["id"],
+            username=user["username"],
+            photo_url=user.get("photo_url"),
+            best_score=user["best_score"],
+            rank=rank
+        )
+        leaderboard.append(entry)
+    
+    return leaderboard
+
+@api_router.get("/stats/user/{user_id}")
+async def get_user_stats(user_id: str):
+    """Get detailed user statistics"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get user's rank
+    users_above = await db.users.count_documents(
+        {"best_score": {"$gt": user["best_score"]}}
+    )
+    rank = users_above + 1
+    
+    # Get recent scores
+    recent_scores = await db.scores.find(
+        {"user_id": user_id}
+    ).sort("created_at", -1).limit(5).to_list(5)
+    
+    return {
+        "user": parse_from_mongo(user),
+        "rank": rank,
+        "recent_scores": [parse_from_mongo(score) for score in recent_scores]
+    }
+
+# System endpoints
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    try:
+        # Test database connection
+        await db.users.find_one()
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database connection failed: {str(e)}")
 
 # Include the router in the main app
 app.include_router(api_router)
 
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -70,6 +278,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Block Blast Game API starting up...")
+    # Create indexes for better performance
+    await db.users.create_index("telegram_id")
+    await db.users.create_index("username")
+    await db.scores.create_index([("user_id", 1), ("created_at", -1)])
+    await db.users.create_index([("best_score", -1)])
+    logger.info("Database indexes created successfully")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    logger.info("Shutting down database connection...")
     client.close()
