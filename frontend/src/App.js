@@ -228,15 +228,15 @@ const ProfileTab = ({ user }) => {
           setUserStats({
             username: user.username || user.first_name || `ID: ${user.telegram_id}`,
             avatar: user.photo_url,
-            bestScore: response.data.best_score,
-            gamesPlayed: response.data.games_played,
-            totalScore: response.data.total_score,
+            bestScore: response.data.user.best_score,
+            gamesPlayed: response.data.user.games_played,
+            totalScore: response.data.user.total_score,
             rank: response.data.rank
           });
 
           // Fetch last game data
-          // const lastGameResponse = await axios.get(`${API}/stats/user/${user.id}`);
-          // setLastGame(lastGameResponse.data);
+          // const lastGameResponse = await axios.get(`${API}/stats/user/${user.id}`); // This line is redundant
+          setLastGame(response.data.recent_scores.length > 0 ? response.data.recent_scores[0] : null);
 
           // Demo quests data
           // const demoQuests = [
@@ -436,9 +436,9 @@ function App() {
             setUserStats({
               username: response.data.username || response.data.first_name || `ID: ${response.data.telegram_id}`,
               avatar: response.data.photo_url,
-              bestScore: response.data.best_score,
-              gamesPlayed: response.data.games_played,
-              totalScore: response.data.total_score,
+              bestScore: statsResponse.data.user.best_score,
+              gamesPlayed: statsResponse.data.user.games_played,
+              totalScore: statsResponse.data.user.total_score,
               rank: statsResponse.data.rank
             });
             console.log('User initialized with backend response:', response.data);
@@ -478,9 +478,9 @@ function App() {
         setUserStats({
           username: response.data.username || response.data.first_name || `ID: ${response.data.telegram_id}`,
           avatar: response.data.photo_url,
-          bestScore: response.data.best_score,
-          gamesPlayed: response.data.games_played,
-          totalScore: response.data.total_score,
+          bestScore: statsResponse.data.user.best_score,
+          gamesPlayed: statsResponse.data.user.games_played,
+          totalScore: statsResponse.data.user.total_score,
           rank: statsResponse.data.rank
         });
         console.log('Demo user initialized:', response.data);
@@ -517,9 +517,9 @@ function App() {
           setUserStats({
             username: user.username || user.first_name || `ID: ${user.telegram_id}`,
             avatar: user.photo_url,
-            bestScore: user.best_score,
-            gamesPlayed: user.games_played,
-            totalScore: user.total_score,
+            bestScore: response.data.user.best_score,
+            gamesPlayed: response.data.user.games_played,
+            totalScore: response.data.user.total_score,
             rank: response.data.rank
           });
         } catch (error) {
