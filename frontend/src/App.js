@@ -235,7 +235,7 @@ const ProfileTab = ({ user }) => {
           });
 
           // Fetch last game data
-          const lastGameResponse = await axios.get(`${API}/stats/user/${user.id}/last_game`);
+          const lastGameResponse = await axios.get(`${API}/stats/user/${user.id}`);
           setLastGame(lastGameResponse.data);
 
           // Demo quests data
