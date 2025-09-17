@@ -235,24 +235,16 @@ const ProfileTab = ({ user }) => {
           });
 
           // Fetch last game data
-          const recentScores = response.data.recent_scores;
-          if (recentScores && recentScores.length > 0) {
-            const lastUserGame = recentScores[0];
-            setLastGame({
-              score: lastUserGame.score,
-              game_duration: lastUserGame.game_duration || 0, // Assume 0 if not present
-            });
-          } else {
-            setLastGame(null);
-          }
+          // const lastGameResponse = await axios.get(`${API}/stats/user/${user.id}`);
+          // setLastGame(lastGameResponse.data);
 
           // Demo quests data
-          const demoQuests = [
-            { id: 1, name: 'Мастер блоков', description: 'Сыграйте 5 игр', target: 5, current: response.data.games_played, reward: '50 монет' },
-            { id: 2, name: 'Легенда очков', description: 'Наберите 5000 очков', target: 5000, current: response.data.total_score, reward: '100 монет' },
-            { id: 3, name: 'Ежедневный бонус', description: 'Войдите 3 дня подряд', target: 3, current: 1, reward: '20 монет' },
-          ];
-          setQuests(demoQuests);
+          // const demoQuests = [
+          //   { id: 1, name: 'Мастер блоков', description: 'Сыграйте 5 игр', target: 5, current: 3, reward: '50 монет' },
+          //   { id: 2, name: 'Легенда очков', description: 'Наберите 5000 очков', target: 5000, current: 2500, reward: '100 монет' },
+          //   { id: 3, name: 'Ежедневный бонус', description: 'Войдите 3 дня подряд', target: 3, current: 1, reward: '20 монет' },
+          // ];
+          // setQuests(demoQuests);
           // console.log('Generated quests:', demoQuests);
 
         } catch (error) {
